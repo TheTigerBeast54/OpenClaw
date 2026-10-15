@@ -56,27 +56,23 @@ jobs:
           sdkmanager --install "platforms;android-35"
           sdkmanager --install "build-tools;35.0.0"
 
-      - name: Inspect repository
+      - name: Inspect Android build configuration
         shell: bash
         run: |
-          echo "=== Repository root ==="
-          ls -la
+          echo "=== Android settings ==="
+          cat android-app/settings.gradle.kts
 
-          echo "=== Build files ==="
-          find . -maxdepth 5 -type f \( \
-            -name "gradlew" -o \
-            -name "settings.gradle" -o \
-            -name "settings.gradle.kts" -o \
-            -name "build.gradle" -o \
-            -name "build.gradle.kts" -o \
-            -name "pom.xml" -o \
-            -name "CMakeLists.txt" -o \
-            -name "AndroidManifest.xml" -o \
-            -name "Makefile" \
-          \) -print
+          echo "=== Root Gradle build ==="
+          cat android-app/build.gradle.kts
 
-          echo "=== Top-level directories ==="
-          find . -maxdepth 2 -type d -print
+          echo "=== App Gradle build ==="
+          cat android-app/app/build.gradle.kts
+
+          echo "=== CMake Android configuration ==="
+          cat Android.cmake
+
+          echo "=== Android README ==="
+          cat README-ANDROID-WORKFLOW.md
 
       - name: Build APK
         working-directory: ${{ steps.gradle.outputs.directory }}
