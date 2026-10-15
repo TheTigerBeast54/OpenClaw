@@ -1,4 +1,3 @@
-```yaml
 name: Captain Claw Android Build
 
 'on':
@@ -60,4 +59,3 @@ jobs:
           path: '**/build/outputs/apk/debug/*.apk'
           if-no-files-found: error
           retention-days: 14
-```
