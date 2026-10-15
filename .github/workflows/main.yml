@@ -44,23 +44,33 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-
-      - name: Prepare SDL Android sources
+          
+        - name: Prepare SDL Android sources
         shell: bash
-        run: |
-          set -e
+          run: |
+            set -euo pipefail
 
-          SDL_JAVA="ThirdParty/SDL2/android-project/app/src/main/java/org/libsdl/app"
-          DEST="android-app/app/src/main/java/org/libsdl/app"
-
-          if [ -d "$SDL_JAVA" ]; then
+            DEST="android-app/app/src/main/java/org/libsdl/app"
             mkdir -p "$DEST"
-            cp -r "$SDL_JAVA"/. "$DEST"/
-          else
-            echo "SDL Android Java sources not found at $SDL_JAVA"
-            find ThirdParty/SDL2 -name SDLActivity.java -print
-            exit 1
-          fi
+
+            SDL_ACTIVITY="$(find ThirdParty/SDL2 -type f -name SDLActivity.java -print -quit 2>/dev/null || true)"
+
+            if [ -z "$SDL_ACTIVITY" ]; then
+              echo "SDLActivity.java not found locally; fetching SDL2 Android sources."
+              git clone --depth 1 --branch SDL2 \
+                https://github.com/libsdl-org/SDL.git \
+                "$RUNNER_TEMP/SDL"
+              SDL_ACTIVITY="$(find "$RUNNER_TEMP/SDL" -type f -name SDLActivity.java -print -quit)"
+            fi
+
+            if [ -z "$SDL_ACTIVITY" ]; then
+              echo "::error::SDLActivity.java could not be located."
+              exit 1
+            fi
+
+            SDL_JAVA_DIR="$(dirname "$SDL_ACTIVITY")"
+            echo "Using SDL Java sources from: $SDL_JAVA_DIR"
+            cp -v "$SDL_JAVA_DIR"/*.java "$DEST"/
 
       - name: Build debug APK
         run: gradle --no-daemon -p android-app assembleDebug --stacktrace
