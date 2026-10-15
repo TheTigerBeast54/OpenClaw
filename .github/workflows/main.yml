@@ -1,10 +1,11 @@
-name: Captain Claw Android Build
+name: Build Captain Claw Android APK
 
 'on':
   workflow_dispatch:
   push:
     branches:
       - main
+      - android-port
 
 permissions:
   contents: read
@@ -24,66 +25,50 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           packages: ''
 
-      - name: Install Android SDK packages
+      - name: Install Android build components
         shell: bash
         run: |
           set -e
-          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "cmake;3.22.1" \
+            "ndk;27.2.12479018"
 
-          if [ ! -x "$SDKMANAGER" ]; then
-            SDKMANAGER="$(find "${ANDROID_HOME}/cmdline-tools" -name sdkmanager -type f | head -n 1)"
-          fi
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
 
-          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
-            echo "ERROR: sdkmanager not found"
+      - name: Prepare SDL Android sources
+        shell: bash
+        run: |
+          set -e
+
+          SDL_JAVA="ThirdParty/SDL2/android-project/app/src/main/java/org/libsdl/app"
+          DEST="android-app/app/src/main/java/org/libsdl/app"
+
+          if [ -d "$SDL_JAVA" ]; then
+            mkdir -p "$DEST"
+            cp -r "$SDL_JAVA"/. "$DEST"/
+          else
+            echo "SDL Android Java sources not found at $SDL_JAVA"
+            find ThirdParty/SDL2 -name SDLActivity.java -print
             exit 1
           fi
 
-          yes | "$SDKMANAGER" --licenses || true
-
-          "$SDKMANAGER" --install \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
-
-      - name: Install SDK packages
-        run: |
-          sdkmanager --install "platform-tools"
-          sdkmanager --install "platforms;android-35"
-          sdkmanager --install "build-tools;35.0.0"
-
-      - name: Inspect Android build configuration
-        shell: bash
-        run: |
-          echo "=== Android settings ==="
-          cat android-app/settings.gradle.kts
-
-          echo "=== Root Gradle build ==="
-          cat android-app/build.gradle.kts
-
-          echo "=== App Gradle build ==="
-          cat android-app/app/build.gradle.kts
-
-          echo "=== CMake Android configuration ==="
-          cat Android.cmake
-
-          echo "=== Android README ==="
-          cat README-ANDROID-WORKFLOW.md
-
-      - name: Build APK
-        working-directory: ${{ steps.gradle.outputs.directory }}
-        run: |
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace
+      - name: Build debug APK
+        run: gradle --no-daemon -p android-app assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: captainclaw-android-debug
-          path: '**/build/outputs/apk/debug/*.apk'
+          path: android-app/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
