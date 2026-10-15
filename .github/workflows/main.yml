@@ -23,7 +23,6 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-```yaml
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -50,7 +49,6 @@ jobs:
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
-```
 
       - name: Install SDK packages
         run: |
